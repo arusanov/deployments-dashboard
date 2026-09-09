@@ -106,11 +106,12 @@ async def test_query_bound_tokens(
     first = (await client.get(PREFIX, params=params)).json()
     token = first["next_cursor"]
     normalized = await client.get(
-        PREFIX, params=params | {"q": "checkout", "cursor": token}
+        PREFIX, params=params | {"q": "CHECKOUT", "cursor": token}
     )
     assert normalized.status_code == 200
     for changed in [
         {"q": "other"},
+        {"q": "checkout"},
         {"limit": "2"},
         {"sort_by": "name"},
         {"sort_order": "asc"},
@@ -130,6 +131,24 @@ async def test_query_bound_tokens(
     assert (
         await client.get(PREFIX, params=params | {"cursor": token})
     ).status_code == 422
+
+
+async def test_cursor_rejects_unicode_queries_with_different_matches(
+    client: httpx.AsyncClient, db: Database, record: RecordFactory
+) -> None:
+    await db.deployments.insert_many([
+        record(i, attributes={"city": "İstanbul"}) for i in range(1, 3)
+    ])
+    params = {"q": "İstanbul", "limit": "1"}
+    first = (await client.get(PREFIX, params=params)).json()
+    assert first["next_cursor"] is not None
+    changed = params | {"q": "i\u0307stanbul"}
+    assert (await client.get(PREFIX, params=changed)).json()["items"] == []
+    response = await client.get(
+        PREFIX, params=changed | {"cursor": first["next_cursor"]}
+    )
+    assert response.status_code == 422
+    assert response.json()["code"] == "invalid_cursor"
 
 
 def test_removed_contract(app: FastAPI) -> None:

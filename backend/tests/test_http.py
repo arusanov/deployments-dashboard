@@ -52,6 +52,7 @@ async def test_http_availability(http_client: httpx.AsyncClient, path: str) -> N
         (PREFIX + "?offset=-1", 422),
         (PREFIX + "?status=unknown", 422),
         (PREFIX + "?sort_by=unknown", 422),
+        (PREFIX + "?q=%00", 422),
         (PREFIX + "/not-a-uuid", 422),
         (PREFIX + "/changes?cursor=invalid", 422),
         (PREFIX + "/changes", 422),

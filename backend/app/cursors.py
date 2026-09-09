@@ -41,9 +41,8 @@ cursor_adapter: TypeAdapter[Cursor] = TypeAdapter(Cursor)
 
 
 def fingerprint(filters: BrowseFilters) -> str:
-    # Bind boundaries to query meaning, not filter order or search capitalization.
+    # Filter ordering is irrelevant, but Unicode lowercasing can change regex matches.
     normalized = filters.model_dump(exclude={"cursor"})
-    normalized["q"] = filters.q.lower()
     for field in ("status", "type", "environment"):
         normalized[field] = sorted(set(normalized[field]))
     return hashlib.sha256(json.dumps(normalized, sort_keys=True).encode()).hexdigest()

@@ -493,6 +493,22 @@ it("resumes polling after explicit retry of a failed cursor reset", async () => 
   );
 });
 
+it.each(["İstanbul", "İ".repeat(200)])(
+  "preserves the literal Unicode query and separates different result windows: %s",
+  async (q) => {
+    const view = browse(`?q=${encodeURIComponent(q)}`);
+    await waitFor(() => expect(view.result.current.rows).toHaveLength(50));
+    expect(calls[0]?.searchParams.get("q")).toBe(q);
+    const originalKey = view.result.current.queryKey;
+    await act(async () => {
+      await view.result.current.update({ q: q.toLowerCase() });
+    });
+    await waitFor(() => expect(calls).toHaveLength(2));
+    expect(view.result.current.queryKey).not.toEqual(originalKey);
+    expect(calls[1]?.searchParams.get("q")).toBe(q.toLowerCase());
+  },
+);
+
 it("keeps selection and equivalent normalized changes in the same activation", async () => {
   const view = dashboard("?status=failed,active&q=HELLO");
   await waitFor(() => expect(view.result.current.rows).toHaveLength(50));
@@ -503,7 +519,7 @@ it("keeps selection and equivalent normalized changes in the same activation", a
     await view.result.current.update({
       selected: rows[0]?.deployment_id ?? null,
       status: ["active", "failed", "active"],
-      q: " hello ",
+      q: " HELLO ",
     });
   });
   expect(view.result.current.rows[0]).toBe(rows[0]);

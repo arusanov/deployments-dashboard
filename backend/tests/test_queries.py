@@ -35,7 +35,13 @@ async def test_arbitrary_literal_search(
 
 @pytest.mark.parametrize(
     "case",
-    [("ς", "Σ", True), ("İ", "i", False), ("PAYMENTS", "payments", True)],
+    [
+        ("ς", "Σ", True),
+        ("İ", "i", False),
+        ("İstanbul", "İstanbul", True),
+        ("İ" * 200, "İ" * 200, True),
+        ("PAYMENTS", "payments", True),
+    ],
 )
 async def test_unicode_attribute_search(
     client: httpx.AsyncClient,
@@ -48,6 +54,17 @@ async def test_unicode_attribute_search(
     response = await client.get(PREFIX, params={"q": search})
     assert response.status_code == 200
     assert len(response.json()["items"]) == int(matches)
+
+
+@pytest.mark.parametrize("search", ["\x00", "checkout\x00api", " \x00 "])
+async def test_search_rejects_nul_as_invalid_input(
+    client: httpx.AsyncClient, search: str
+) -> None:
+    response = await client.get(PREFIX, params={"q": search})
+    assert response.status_code == 422, response.text
+    assert response.json()["code"] == "invalid_input"
+    assert response.json()["details"][0]["location"] == ["query", "q"]
+    assert (await client.get("/health/ready")).status_code == 200
 
 
 async def test_full_uuid_search_includes_other_values(

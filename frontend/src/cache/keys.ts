@@ -5,7 +5,7 @@ export function browseParameters(
   state: Omit<BrowseState, "selected">,
 ): BrowseQuery {
   return {
-    q: state.q.trim().toLowerCase(),
+    q: state.q.trim(),
     status: [...new Set(state.status)].toSorted(),
     type: [...new Set(state.type)].toSorted(),
     environment: [...new Set(state.environment)].toSorted(),

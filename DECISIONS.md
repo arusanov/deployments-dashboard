@@ -33,6 +33,8 @@ Concurrent changes can cause repeats or omissions; displayed duplicates use the
 newest revision. A cursor still works if its boundary record moves or disappears.
 
 Search uses literal, case-insensitive substrings within individual values.
+Queries retain their case in requests, cache keys, and cursors: Unicode lowercasing
+can change which values match. Embedded NUL characters are rejected as invalid input.
 Matching within values is chosen over indexable prefix-only search, accepting scans.
 Filters use OR within a field and AND across fields. Search commits after 300 ms; Enter
 and clear commit immediately, and IME waits for composition. Filters/sorting commit

@@ -38,7 +38,7 @@ class DeploymentPage(BaseModel):
 
 
 class Filters(BaseModel):
-    q: str = Field(default="", max_length=SEARCH_MAX_LENGTH)
+    q: str = Field(default="", max_length=SEARCH_MAX_LENGTH, pattern=r"^[^\x00]*$")
     status: list[Status] = []
     type: list[DeploymentType] = []
     environment: list[Environment] = []

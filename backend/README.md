@@ -100,13 +100,15 @@ all fields and validation limits. `/health/live` reports liveness;
 
 List parameters:
 
-- `q`: literal, case-insensitive substring in ID, creator, or any attribute value.
+- `q`: literal, case-insensitive substring in ID, creator, or any attribute value;
+  embedded NUL characters are rejected with `422 invalid_input`.
 - Repeated `status`, `type`, `environment`: OR within a field, AND across fields.
 - `deleted=exclude|only|include`: defaults to `exclude`; expired records stay hidden.
 - `sort_by=created_at|updated_at|name|status|type|environment|created_by` and
   `sort_order=asc|desc`: default `created_at DESC`; ID ties follow that direction.
 - `limit`: 1–50, default 50. No offsets or exact totals.
 - `cursor`: pass either returned cursor with unchanged query parameters.
+  Preserve the search text's case when following a cursor.
   Null means the end; `invalid_cursor` requires restarting at page one.
 
 ```sh

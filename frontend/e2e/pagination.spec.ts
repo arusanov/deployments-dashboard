@@ -1,7 +1,57 @@
 import { test, expect } from "@playwright/test";
-import type { DeploymentPage } from "../src/api/client";
+import type { Deployment, DeploymentPage } from "../src/api/client";
+import { apiURL } from "./api";
 
 const listPath = "/api/deployments";
+
+test("exact Unicode attribute searches preserve text and the 200-character limit", async ({
+  page,
+  request,
+}) => {
+  const response = await request.get(`${apiURL}${listPath}?limit=1`);
+  expect(response.ok()).toBe(true);
+  const initial = (await response.json()) as DeploymentPage;
+  const record = initial.items[0];
+  if (!record) {
+    throw new Error("Missing seeded search result");
+  }
+  const detailURL = `${apiURL}${listPath}/${record.deployment_id}`;
+  const key = `unicode_${crypto.randomUUID()}`;
+  const patch = async (value: string | null) => {
+    const detail = await request.get(detailURL);
+    expect(detail.ok()).toBe(true);
+    const current = (await detail.json()) as Deployment;
+    const saved = await request.patch(detailURL, {
+      headers: { "If-Match": `"${current.revision}"` },
+      data: { attributes: { [key]: value } },
+    });
+    expect(saved.ok()).toBe(true);
+  };
+  try {
+    await page.goto("/");
+    const search = page.getByRole("textbox", { name: "Search deployments" });
+    for (const value of ["İstanbul", "İ".repeat(200)]) {
+      await patch(value);
+      const found = page.waitForResponse((result) => {
+        const url = new URL(result.url());
+        return url.pathname === listPath && url.searchParams.get("q") === value;
+      });
+      await search.fill(value);
+      await search.press("Enter");
+      const result = await found;
+      expect(result.status()).toBe(200);
+      const data = (await result.json()) as DeploymentPage;
+      expect(data.items.map((item) => item.deployment_id)).toContain(
+        record.deployment_id,
+      );
+      await expect(
+        page.locator(`[data-deployment-id="${record.deployment_id}"]`),
+      ).toBeVisible();
+    }
+  } finally {
+    await patch(null);
+  }
+});
 
 test("search, combined filters, both sort directions, clearing and first-page reload", async ({
   page,
