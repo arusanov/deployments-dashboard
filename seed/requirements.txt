@@ -1,0 +1,2 @@
+-e ./backend
+faker==40.38.0

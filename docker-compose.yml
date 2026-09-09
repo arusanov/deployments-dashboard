@@ -1,0 +1,93 @@
+x-backend: &backend
+  build:
+    context: .
+    dockerfile: backend/Dockerfile
+    target: runtime
+  env_file:
+    - path: ./backend/.env
+      required: false
+  environment:
+    MONGO_URI: mongodb://mongodb:27017
+    MONGO_DB: deployments
+    CURSOR_SECRET_FILE: /var/lib/deployments/cursor_secret
+
+services:
+  mongodb:
+    image: mongo:7
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: deployments
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand({ping:1})"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  backend-init:
+    <<: *backend
+    command: ["python", "-m", "app.bootstrap"]
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    volumes:
+      - backend_state:/var/lib/deployments
+
+  backend:
+    <<: *backend
+    init: true
+    restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      backend-init:
+        condition: service_completed_successfully
+    volumes:
+      - backend_state:/var/lib/deployments:ro
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import http.client; c = http.client.HTTPConnection('127.0.0.1', 8000, timeout=3); c.request('GET', '/health/ready'); raise SystemExit(c.getresponse().status != 200)"
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+    init: true
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  seed:
+    <<: *backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: tools
+    profiles: ["tools"]
+    command: ["python", "/seed/seed.py"]
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+volumes:
+  mongodb_data:
+  backend_state:
