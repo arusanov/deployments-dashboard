@@ -1,0 +1,11 @@
+services:
+  backend:
+    ports: !override ["127.0.0.1:${TEST_API_PORT:-18000}:8000"]
+    environment:
+      CORS_ORIGINS: '["http://localhost:${TEST_FRONTEND_PORT:-3001}","http://127.0.0.1:${TEST_FRONTEND_PORT:-3001}","http://localhost:${TEST_IMAGE_PORT:-13000}"]'
+  frontend:
+    profiles: ["frontend-image"]
+    build:
+      args:
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:${TEST_API_PORT:-18000}
+    ports: !override ["127.0.0.1:${TEST_IMAGE_PORT:-13000}:3000"]

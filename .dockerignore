@@ -1,0 +1,13 @@
+**
+!backend/
+!backend/Dockerfile
+!backend/pyproject.toml
+!backend/uv.lock
+!backend/openapi.json
+!backend/app/
+!backend/app/*.py
+!backend/tests/
+!backend/tests/*.py
+!seed/
+!seed/seed.py
+!seed/requirements.txt

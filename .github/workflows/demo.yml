@@ -1,0 +1,39 @@
+name: Demo
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COMPOSE_PROJECT_NAME: demo-ci
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.nvmrc
+      - name: Build and start demo
+        run: bash scripts/demo.sh
+      - name: Capture screenshot
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npx playwright screenshot --device="Desktop Chrome" --viewport-size="1440,1000" --wait-for-selector="[data-deployment-id]" --timeout=30000 http://localhost:3000 test-results/demo.png
+      - uses: actions/upload-artifact@v7
+        with:
+          name: demo-screenshot
+          path: frontend/test-results/demo.png
+          if-no-files-found: error
+      - name: Logs and cleanup
+        if: always()
+        run: |
+          docker compose logs --no-color --tail=100 || true
+          docker compose --profile tools down --volumes

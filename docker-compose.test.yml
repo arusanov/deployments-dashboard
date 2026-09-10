@@ -1,0 +1,19 @@
+services:
+  frontend:
+    profiles: ["frontend-image"]
+    ports: !reset []
+  mongodb:
+    ports: !reset []
+  backend-init:
+    env_file: !reset []
+    environment:
+      MONGO_DB: test_deployments_http
+  backend:
+    env_file: !reset []
+    environment:
+      MONGO_DB: test_deployments_http
+    ports: !reset []
+  seed:
+    env_file: !reset []
+    environment:
+      MONGO_DB: test_deployments_http
